@@ -399,13 +399,13 @@ button:disabled {
   left: 50%;
   overflow: hidden;
   padding: 0;
+  pointer-events: none;
   position: absolute;
   transform: translateX(-50%);
   width: 220px;
 }
 
 .peek-sign {
-  animation: sign-cycle 12s ease-in-out infinite;
   color: var(--pink);
   filter: drop-shadow(0 0 7px rgba(255,51,204,0.72));
   font-family: var(--display);
@@ -413,19 +413,22 @@ button:disabled {
   letter-spacing: 0.16em;
   margin-bottom: 0.5rem;
   opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 1.2s ease, transform 1.2s ease;
 }
 
 .elevator-shaft {
   border-bottom: 2px solid rgba(51,255,255,0.55);
   display: block;
   height: 76px;
+  opacity: 0;
   overflow: hidden;
   position: relative;
+  transition: opacity 1.2s ease;
   width: 92px;
 }
 
 .elevator-cab {
-  animation: elevator-cycle 12s ease-in-out infinite;
   background: var(--void-deep);
   border: 2px solid var(--cyan);
   border-bottom: 5px solid var(--orange);
@@ -434,7 +437,12 @@ button:disabled {
   display: block;
   height: 72px;
   left: 0;
+  opacity: 0;
   position: absolute;
+  transform: translateY(0);
+  transition:
+    opacity 1.2s ease,
+    transform 5s cubic-bezier(.22,.64,.18,1);
   width: 92px;
 }
 
@@ -449,15 +457,42 @@ button:disabled {
 .elevator-door--left { left: 0; }
 .elevator-door--right { right: 0; transform: scaleX(-1); }
 
-@keyframes elevator-cycle {
-  0% { transform: translateY(0); }
-  42%, 58% { transform: translateY(-76px); }
-  100% { transform: translateY(0); }
+.peek-elevator--entering .peek-sign,
+.peek-elevator--live .peek-sign {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-@keyframes sign-cycle {
-  0%, 39%, 72%, 100% { opacity: 0; transform: translateY(4px); }
-  46%, 66% { opacity: 1; transform: translateY(0); }
+.peek-elevator--entering .elevator-shaft,
+.peek-elevator--live .elevator-shaft {
+  opacity: 1;
+}
+
+.peek-elevator--entering .elevator-cab,
+.peek-elevator--live .elevator-cab {
+  opacity: 1;
+  transform: translateY(-76px);
+}
+
+.peek-elevator--live {
+  pointer-events: auto;
+}
+
+.peek-elevator--exiting .peek-sign {
+  opacity: 0;
+  transform: translateY(4px);
+  transition-duration: 5s, 5s;
+}
+
+.peek-elevator--exiting .elevator-shaft {
+  opacity: 0;
+  transition-duration: 5s;
+}
+
+.peek-elevator--exiting .elevator-cab {
+  opacity: 0;
+  transform: translateY(0);
+  transition-duration: 5s, 5s;
 }
 
 .crawler-form {
@@ -1135,10 +1170,10 @@ input[type="radio"] {
   }
 
   .elevator-cab {
-    transform: translateY(-76px);
+    transition-duration: 1ms, 1ms !important;
   }
 
   .peek-sign {
-    opacity: 1;
+    transition-duration: 1ms, 1ms !important;
   }
 }

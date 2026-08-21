@@ -11,6 +11,57 @@ import {
 
 type Level = "surface" | "reward" | "underground" | "vote" | "secret";
 type VoteResult = (typeof VOTE_OPTIONS)[number] & { count: number; percentage: number };
+type RevealPhase = "hidden" | "entering" | "live" | "exiting";
+type RevealState = { cycleIndex: number; phase: RevealPhase; remainingMs: number };
+
+const REVEAL_DURATIONS: Record<RevealPhase, number> = {
+  hidden: 18_000,
+  entering: 5_000,
+  live: 10_000,
+  exiting: 5_000,
+};
+const REVEAL_SEQUENCE: RevealPhase[] = ["hidden", "entering", "live", "exiting"];
+const REVEAL_CYCLE_MS = REVEAL_SEQUENCE.reduce((total, phase) => total + REVEAL_DURATIONS[phase], 0);
+
+function getRevealState(startedAt: number, now = Date.now()): RevealState {
+  const elapsed = Math.max(0, now - startedAt);
+  const cycleElapsed = elapsed % REVEAL_CYCLE_MS;
+  let boundary = 0;
+
+  for (const phase of REVEAL_SEQUENCE) {
+    boundary += REVEAL_DURATIONS[phase];
+    if (cycleElapsed < boundary) {
+      return {
+        cycleIndex: Math.floor(elapsed / REVEAL_CYCLE_MS),
+        phase,
+        remainingMs: boundary - cycleElapsed,
+      };
+    }
+  }
+
+  return { cycleIndex: Math.floor(elapsed / REVEAL_CYCLE_MS), phase: "hidden", remainingMs: REVEAL_DURATIONS.hidden };
+}
+
+function useRevealState(startedAt: number) {
+  const [revealState, setRevealState] = useState(() => getRevealState(startedAt));
+
+  useEffect(() => {
+    let timer: number | undefined;
+
+    function syncRevealState() {
+      const next = getRevealState(startedAt);
+      setRevealState(next);
+      timer = window.setTimeout(syncRevealState, next.remainingMs + 24);
+    }
+
+    syncRevealState();
+    return () => {
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [startedAt]);
+
+  return revealState;
+}
 
 const DISCLAIMER = [
   "hellocrawler.world is an unofficial fan project and is not affiliated with or endorsed by Matt Dinniman, publishers, producers, or other DCC rights holders.",
@@ -80,9 +131,21 @@ function BrokenCountdown() {
   );
 }
 
-function ElevatorButton({ onEnter }: { onEnter: () => void }) {
+function ElevatorButton({ onEnter, startedAt }: { onEnter: () => void; startedAt: number }) {
+  const { phase } = useRevealState(startedAt);
+  const isLive = phase === "live";
+
   return (
-    <button className="peek-elevator" type="button" onClick={onEnter} aria-label="Descend to the Underground">
+    <button
+      className={`peek-elevator peek-elevator--${phase}`}
+      type="button"
+      onClick={() => {
+        if (isLive) onEnter();
+      }}
+      aria-hidden={!isLive}
+      aria-label="Descend to the Underground"
+      tabIndex={isLive ? 0 : -1}
+    >
       <span className="peek-sign">SNEAK PEEK ↓</span>
       <span className="elevator-shaft">
         <span className="elevator-cab">
@@ -195,36 +258,9 @@ function UndergroundLevel({ onVote }: { onVote: () => void }) {
   );
 }
 
-function SecretPortal({ onEnter }: { onEnter: () => void }) {
-  type PortalPhase = "hidden" | "entering" | "live" | "exiting";
-
-  const [phase, setPhase] = useState<PortalPhase>("hidden");
-  const [side, setSide] = useState<"left" | "right">("left");
-
-  useEffect(() => {
-    const duration = {
-      hidden: 18_000,
-      entering: 6_000,
-      live: 10_000,
-      exiting: 5_000,
-    }[phase];
-
-    const timer = window.setTimeout(() => {
-      if (phase === "hidden") {
-        setPhase("entering");
-      } else if (phase === "entering") {
-        setPhase("live");
-      } else if (phase === "live") {
-        setPhase("exiting");
-      } else {
-        setSide((current) => (current === "left" ? "right" : "left"));
-        setPhase("hidden");
-      }
-    }, duration);
-
-    return () => window.clearTimeout(timer);
-  }, [phase]);
-
+function SecretPortal({ onEnter, startedAt }: { onEnter: () => void; startedAt: number }) {
+  const { cycleIndex, phase } = useRevealState(startedAt);
+  const side = cycleIndex % 2 === 0 ? "left" : "right";
   const isLive = phase === "live";
 
   return (
@@ -247,7 +283,7 @@ function SecretPortal({ onEnter }: { onEnter: () => void }) {
   );
 }
 
-function VoteLevel({ onSecret }: { onSecret: () => void }) {
+function VoteLevel({ onSecret, startedAt }: { onSecret: () => void; startedAt: number }) {
   const [choice, setChoice] = useState<VoteChoice | "">("");
   const [results, setResults] = useState<VoteResult[] | null>(null);
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
@@ -312,7 +348,7 @@ function VoteLevel({ onSecret }: { onSecret: () => void }) {
           ))}
         </div>
         <p className="vote-note" aria-live="polite">{message}</p>
-        <SecretPortal onEnter={onSecret} />
+        <SecretPortal onEnter={onSecret} startedAt={startedAt} />
       </section>
     );
   }
@@ -489,6 +525,7 @@ function LegalPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 export function HelloCrawlerExperience() {
+  const [contactStartedAt] = useState(() => Date.now());
   const [level, setLevel] = useState<Level>("surface");
   const [transitioning, setTransitioning] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
@@ -515,7 +552,7 @@ export function HelloCrawlerExperience() {
     switch (level) {
       case "reward": return <RewardLevel />;
       case "underground": return <UndergroundLevel onVote={() => goTo("vote")} />;
-      case "vote": return <VoteLevel onSecret={() => goTo("secret")} />;
+      case "vote": return <VoteLevel onSecret={() => goTo("secret")} startedAt={contactStartedAt} />;
       case "secret": return <VolunteerLevel onSurface={() => goTo("surface")} />;
       default:
         return (
@@ -525,11 +562,11 @@ export function HelloCrawlerExperience() {
             <button className="action-button action-button--orange reward-button" type="button" onClick={() => goTo("reward")}>
               REWARD? YOU GET A FREE STICKER!
             </button>
-            <ElevatorButton onEnter={() => goTo("underground")} />
+            <ElevatorButton onEnter={() => goTo("underground")} startedAt={contactStartedAt} />
           </section>
         );
     }
-  }, [goTo, level]);
+  }, [contactStartedAt, goTo, level]);
 
   return (
     <main className={`experience experience--${level}${transitioning ? " experience--moving" : ""}`}>
