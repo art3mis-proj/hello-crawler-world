@@ -1,0 +1,48 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# testing
+/coverage
+
+# local environments and secrets
+.env*
+!.env.example
+
+# local tooling
+.DS_Store
+*.log
+*.tsbuildinfo
+.vercel
+.supabase
+
+# private/non-product project material
+/AGENTS.md
+/CLAUDE.md
+/docs/
+/notes/
+/planning/
+/research/
+*.docx
+*.fig
+*.key
+*.numbers
+*.p12
+*.pages
+*.pem
+*.psb
+*.psd
+*.pfx
+*.pptx
+*.sketch
+*.xlsx
+
+# generated design proofs and temporary working files
+/output/
+/tmp/
