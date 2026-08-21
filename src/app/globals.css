@@ -805,7 +805,6 @@ input[type="radio"] {
   z-index: 1;
 }
 
-.secret-portal--entering::before,
 .secret-portal--live::before {
   opacity: 1;
 }
