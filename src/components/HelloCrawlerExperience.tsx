@@ -67,6 +67,7 @@ const DISCLAIMER = [
   "hellocrawler.world is an unofficial fan project and is not affiliated with or endorsed by Matt Dinniman, publishers, producers, or other DCC rights holders.",
   "The sticker is a free fan-made gift for personal, noncommercial use and sharing. It may not be sold or presented as official merchandise.",
   "Email use: claim access and, only if selected, one opening notice. No newsletters. No marketers. Never sold. We respect your privacy.",
+  "Site analytics: aggregate, cookie-free Vercel page-view stats so we know whether the outpost is alive.",
 ];
 
 function BrandAbout() {
